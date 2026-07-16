@@ -1,0 +1,27 @@
+{
+  "telegram": {
+    "botTokenEnv": "HERMES_CLAUDE_BRIDGE_BOT_TOKEN",
+    "chatId": -1001234567890,
+    "botUsername": "your_bridge_bot"
+  },
+  "pollIntervalSeconds": 300,
+  "claude": {
+    "permissionMode": "acceptEdits",
+    "allowedTools": [
+      "Read",
+      "Edit",
+      "Bash(git *)",
+      "Bash(gh pr create*)",
+      "Bash(gh pr view*)"
+    ],
+    "maxBudgetUsd": 2.0
+  },
+  "projects": [
+    {
+      "topicId": 12,
+      "name": "example-project",
+      "repoPath": "/absolute/path/to/repo",
+      "baseBranch": "main"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "hermes-claude-bridge",
+  "version": "0.1.0",
+  "description": "Telegram-topic bridge that dispatches tasks to a headless Claude Code CLI and reports back into the thread.",
+  "type": "module",
+  "bin": {
+    "hermes-claude-bridge": "./bin/poll.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}

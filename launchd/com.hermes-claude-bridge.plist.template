@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.hermes-claude-bridge</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>__NODE_BIN__</string>
+    <string>__SCRIPT_PATH__</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>__REPO_DIR__</string>
+
+  <!-- No secrets here: poll.js loads the bot token itself from .env
+       next to the script (see lib/env.js). -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>__PATH_ENV__</string>
+  </dict>
+
+  <key>StartInterval</key>
+  <integer>__POLL_INTERVAL_SECONDS__</integer>
+
+  <!-- launchd will not start a new run while the previous one is still
+       alive, so a slow Claude Code task never overlaps with the next poll. -->
+  <key>StandardOutPath</key>
+  <string>__LOG_PATH__</string>
+  <key>StandardErrorPath</key>
+  <string>__LOG_PATH__</string>
+
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>
