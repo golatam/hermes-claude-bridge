@@ -14,14 +14,16 @@
       "Bash(gh pr create*)",
       "Bash(gh pr view*)"
     ],
-    "maxBudgetUsd": 2.0
+    "maxBudgetUsd": 2.0,
+    "defaultGitMode": "pr"
   },
   "projects": [
     {
       "topicId": 12,
       "name": "example-project",
       "repoPath": "/absolute/path/to/repo",
-      "baseBranch": "main"
+      "baseBranch": "main",
+      "gitMode": "pr"
     }
   ]
 }

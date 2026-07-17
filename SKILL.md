@@ -10,8 +10,10 @@ A background bridge, not an interactive skill: a cron/launchd job runs
 topics) for messages that @mention the bridge bot or reply to one of its
 messages, maps the topic to a local git repository via `config.json`, runs
 `claude -p` headless in that repo with the message text as the task, and
-replies in the same thread with a status update. Finished work lands on a
-branch with a PR — nothing is pushed to the base branch automatically.
+replies in the same thread with a status update. Per project, `gitMode`
+controls how finished work lands: `"pr"` (default) — a branch + pull
+request, nothing pushed to the base branch automatically; `"direct"` —
+committed and pushed straight to the base branch, no PR checkpoint.
 
 ## When invoked to help set this up
 
@@ -59,11 +61,14 @@ Walk the user through, in order:
 - `claude.allowedTools` in the example config only permits `git` and
   `gh pr create|view` — no arbitrary shell commands. Note this does **not**
   by itself stop a push to the base branch: `Bash(git *)` covers `git push`
-  to any branch. The base-branch protection is enforced by an explicit
-  instruction baked into every dispatched task's prompt (see
-  `lib/dispatch.js` → `buildTaskPrompt`), not by the tool allowlist. Treat
-  that prompt instruction as best-effort, not a hard guarantee — for a repo
+  to any branch regardless of `gitMode`. Which branch is/isn't safe to push
+  to is enforced by an explicit instruction baked into every dispatched
+  task's prompt (see `lib/dispatch.js` → `buildTaskPrompt` /
+  `GIT_WORKFLOW_INSTRUCTIONS`), not by the tool allowlist. Treat that
+  prompt instruction as best-effort, not a hard guarantee — for a repo
   where that matters, also add branch protection on the remote (e.g. a
-  required-review rule on the base branch in GitHub).
+  required-review rule on the base branch in GitHub), and think twice
+  before setting `gitMode: "direct"` there — it removes the PR review
+  checkpoint entirely.
 - `claude.maxBudgetUsd` caps API spend per dispatched task as a safety net
   against a runaway session.

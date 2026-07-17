@@ -5,10 +5,11 @@
 
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { mkdirSync } from 'node:fs';
 
 import { loadConfig } from '../lib/config.js';
 import { loadState, saveState, pendingKey } from '../lib/state.js';
-import { TelegramClient, isAddressedToBot } from '../lib/telegram.js';
+import { TelegramClient, isAddressedToBot, messageText, pickAttachment } from '../lib/telegram.js';
 import { buildTaskPrompt, runClaudeTask, newSessionId } from '../lib/dispatch.js';
 import { loadDotEnv } from '../lib/env.js';
 
@@ -17,6 +18,22 @@ const ROOT = join(__dirname, '..');
 
 const configPath = process.env.HERMES_CLAUDE_BRIDGE_CONFIG ?? join(ROOT, 'config.json');
 const statePath = process.env.HERMES_CLAUDE_BRIDGE_STATE ?? join(ROOT, 'state.json');
+const inboxDir = join(ROOT, 'inbox');
+
+// Downloads any document/photo attached to the message into inboxDir and
+// returns its local path, or null if the message has no attachment. Claude
+// Code is granted access to inboxDir via --add-dir since it's outside the
+// target repo's working directory.
+async function downloadAttachment(message, telegram) {
+  const attachment = pickAttachment(message);
+  if (!attachment) return null;
+
+  mkdirSync(inboxDir, { recursive: true });
+  const safeName = attachment.fileName.replace(/[^\w.\-]+/g, '_');
+  const destPath = join(inboxDir, `${message.message_id}-${safeName}`);
+  await telegram.downloadFile(attachment.fileId, destPath);
+  return destPath;
+}
 
 async function main() {
   loadDotEnv(join(ROOT, '.env'));
@@ -61,6 +78,13 @@ async function handleMessage({ message, config, state, telegram, me }) {
   const replyToId = message.reply_to_message?.message_id;
   const pending = replyToId ? state.pendingQuestions[pendingKey(chatId, replyToId)] : null;
 
+  console.log(
+    `msg ${message.message_id} thread=${message.message_thread_id} ` +
+      `reply_to=${replyToId ?? '-'} reply_to_from=${message.reply_to_message?.from?.id ?? '-'} ` +
+      `botId=${me.id} pendingMatch=${Boolean(pending)} attachment=${Boolean(pickAttachment(message))} ` +
+      `text=${JSON.stringify(messageText(message).slice(0, 60))}`
+  );
+
   if (pending) {
     await resumeSession({ message, pending, config, state, telegram, chatId, replyToId });
     return;
@@ -79,8 +103,10 @@ async function handleMessage({ message, config, state, telegram, me }) {
   }
 
   const sessionId = newSessionId();
-  const prompt = buildTaskPrompt(message.text ?? '', project.baseBranch ?? 'main');
-  console.log(`Dispatching new task for project "${project.name}" (session ${sessionId})`);
+  const attachmentPath = await downloadAttachment(message, telegram);
+  const gitMode = project.gitMode ?? config.claude.defaultGitMode ?? 'pr';
+  const prompt = buildTaskPrompt(messageText(message), project.baseBranch ?? 'main', attachmentPath, gitMode);
+  console.log(`Dispatching new task for project "${project.name}" (session ${sessionId}, gitMode=${gitMode})`);
 
   const result = await runClaudeTask({
     repoPath: project.repoPath,
@@ -88,6 +114,7 @@ async function handleMessage({ message, config, state, telegram, me }) {
     sessionId,
     resume: false,
     claudeConfig: config.claude,
+    addDir: attachmentPath ? inboxDir : null,
   });
 
   await reportResult({ telegram, chatId, message, project, result, state });
@@ -96,12 +123,18 @@ async function handleMessage({ message, config, state, telegram, me }) {
 async function resumeSession({ message, pending, config, state, telegram, chatId, replyToId }) {
   console.log(`Resuming session ${pending.sessionId} for project "${pending.projectName}"`);
 
+  const attachmentPath = await downloadAttachment(message, telegram);
+  const replyText = attachmentPath
+    ? `${messageText(message)}\n\nAttached file, read it first: ${attachmentPath}`
+    : messageText(message);
+
   const result = await runClaudeTask({
     repoPath: pending.repoPath,
-    prompt: message.text ?? '',
+    prompt: replyText,
     sessionId: pending.sessionId,
     resume: true,
     claudeConfig: config.claude,
+    addDir: attachmentPath ? inboxDir : null,
   });
 
   // Only drop the pending-question link once the resume actually
