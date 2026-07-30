@@ -24,17 +24,32 @@ if [[ -z "$NODE_BIN" ]]; then
 fi
 
 POLL_INTERVAL_SECONDS="$(node -e "console.log(JSON.parse(require('fs').readFileSync('config.json','utf8')).pollIntervalSeconds)")"
-SCRIPT_PATH="$REPO_DIR/bin/poll.js"
-LOG_PATH="$REPO_DIR/bridge.log"
 LABEL="com.hermes-claude-bridge"
 PLIST_PATH="$HOME/Library/LaunchAgents/$LABEL.plist"
 
-mkdir -p "$HOME/Library/LaunchAgents"
+# launchd needs the executable, its WorkingDirectory, and the log path to
+# resolve on the *internal* disk — $REPO_DIR sits on an external drive that
+# may not be mounted when a scheduled tick fires. If any of those three
+# don't resolve at spawn time, launchd fails the job with EX_CONFIG before a
+# single line of our code runs, and there's nothing in the log to explain
+# why. So launchd only ever points at a small wrapper (run.sh) on internal
+# storage; the wrapper itself checks whether $REPO_DIR is reachable before
+# handing off to node.
+SUPPORT_DIR="$HOME/Library/Application Support/hermes-claude-bridge"
+WRAPPER_PATH="$SUPPORT_DIR/run.sh"
+LOG_PATH="$HOME/Library/Logs/hermes-claude-bridge.log"
+
+mkdir -p "$HOME/Library/LaunchAgents" "$SUPPORT_DIR" "$HOME/Library/Logs"
 
 sed \
-  -e "s#__NODE_BIN__#$NODE_BIN#g" \
-  -e "s#__SCRIPT_PATH__#$SCRIPT_PATH#g" \
   -e "s#__REPO_DIR__#$REPO_DIR#g" \
+  -e "s#__NODE_BIN__#$NODE_BIN#g" \
+  launchd/run.sh.template > "$WRAPPER_PATH"
+chmod +x "$WRAPPER_PATH"
+
+sed \
+  -e "s#__WRAPPER_PATH__#$WRAPPER_PATH#g" \
+  -e "s#__SUPPORT_DIR__#$SUPPORT_DIR#g" \
   -e "s#__PATH_ENV__#$PATH#g" \
   -e "s#__POLL_INTERVAL_SECONDS__#$POLL_INTERVAL_SECONDS#g" \
   -e "s#__LOG_PATH__#$LOG_PATH#g" \

@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# This is what launchd actually spawns — it lives on internal storage
+# (~/Library/Application Support/hermes-claude-bridge/run.sh) so launchd can
+# always exec it, even when the external disk holding the repo/config below
+# is unmounted. Without this indirection, launchd's own job setup (chdir
+# into WorkingDirectory, open the log path) fails with EX_CONFIG before any
+# of our code runs, and there's nothing to log because the log path itself
+# was unreachable too.
+set -euo pipefail
+
+REPO_DIR="__REPO_DIR__"
+NODE_BIN="__NODE_BIN__"
+
+if [[ ! -d "$REPO_DIR" ]]; then
+  echo "$(date '+%Y-%m-%d %H:%M:%S') external disk not mounted ($REPO_DIR unreachable), skipping this tick."
+  exit 0
+fi
+
+exec "$NODE_BIN" "$REPO_DIR/bin/poll.js"

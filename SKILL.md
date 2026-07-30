@@ -43,8 +43,13 @@ Walk the user through, in order:
 
 ## When invoked to check status or debug
 
-- `tail -f /tmp/hermes-claude-bridge.log` (or the path `install.sh` printed)
-  for the last poll run's output.
+- `tail -f ~/Library/Logs/hermes-claude-bridge.log` (or the path `install.sh`
+  printed) for the last poll run's output. This log lives on internal
+  storage deliberately — it (and the launchd job's `WorkingDirectory`) must
+  resolve even when the external disk holding the repo is unmounted, or
+  launchd fails the job with `EX_CONFIG` before writing anything. A line
+  saying "external disk not mounted ... skipping this tick" means exactly
+  that, not a bug.
 - `cat state.json` — `pendingQuestions` shows sessions waiting on a Telegram
   reply; `lastUpdateId` is the Telegram offset already processed.
 - Run one pass by hand: `node bin/poll.js` (uses the same `config.json` /

@@ -53,6 +53,13 @@ async function main() {
 
     const message = update.message;
     if (!message || message.from?.id === me.id) continue;
+    // Any other bot in the chat (e.g. a separate personal-assistant bot
+    // sharing this supergroup) must never be able to trigger a dispatch —
+    // a bot that replies to one of our own status messages would otherwise
+    // satisfy isAddressedToBot()'s reply-to-bot check exactly like a human
+    // would, risking a reply/reply loop that burns real Claude Code budget
+    // in a real repo.
+    if (message.from?.is_bot) continue;
     if (message.chat.id !== config.telegram.chatId) continue;
 
     try {

@@ -7,12 +7,15 @@
 
   <key>ProgramArguments</key>
   <array>
-    <string>__NODE_BIN__</string>
-    <string>__SCRIPT_PATH__</string>
+    <string>__WRAPPER_PATH__</string>
   </array>
 
+  <!-- Deliberately NOT the repo dir: it lives on an external disk that may
+       be unmounted when launchd fires. WorkingDirectory/log paths must
+       resolve on internal storage or launchd fails the whole job with
+       EX_CONFIG before run.sh even starts (see run.sh.template). -->
   <key>WorkingDirectory</key>
-  <string>__REPO_DIR__</string>
+  <string>__SUPPORT_DIR__</string>
 
   <!-- No secrets here: poll.js loads the bot token itself from .env
        next to the script (see lib/env.js). -->
